@@ -1,0 +1,6 @@
+{
+  "name": "Blogger Instant Indexer",
+  "description": "Send instant notifications to Googlebot and search crawlers for Blogger posts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

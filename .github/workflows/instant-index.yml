@@ -1,0 +1,43 @@
+name: Blogger Instant Googlebot Indexer
+
+on:
+  workflow_dispatch:
+    inputs:
+      post_url:
+        description: 'Blogger Post URL to index (ಬ್ಲಾಗ್ ಪೋಸ್ಟ್ ಲಿಂಕ್)'
+        required: true
+        type: string
+        default: 'https://yourblog.blogspot.com/2026/10/your-post.html'
+      action_type:
+        description: 'Action Type'
+        required: true
+        type: choice
+        options:
+          - URL_UPDATED
+          - URL_DELETED
+        default: 'URL_UPDATED'
+  schedule:
+    # Optional: Automatically check & index latest Blogger posts daily at 06:00 UTC
+    - cron: '0 6 * * *'
+
+jobs:
+  index_post:
+    name: Ping Googlebot & WebSub Hub
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Instant Indexer Script
+        env:
+          INPUT_POST_URL: ${{ github.event.inputs.post_url }}
+          INPUT_ACTION_TYPE: ${{ github.event.inputs.action_type || 'URL_UPDATED' }}
+          GSC_SERVICE_ACCOUNT_KEY: ${{ secrets.GSC_SERVICE_ACCOUNT_KEY }}
+        run: |
+          node scripts/github-action-index.js
