@@ -11,11 +11,16 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// In AI Studio / Cloud Run, process.env.PORT is 8080 (which is used by Nginx).
+// The app dev server MUST ALWAYS bind to port 3000.
 const args = process.argv.slice(2);
-let PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+let PORT = 3000;
 const portIdx = args.indexOf('--port');
 if (portIdx !== -1 && args[portIdx + 1]) {
-  PORT = parseInt(args[portIdx + 1], 10);
+  const parsed = parseInt(args[portIdx + 1], 10);
+  if (!isNaN(parsed) && parsed !== 8080) {
+    PORT = parsed;
+  }
 }
 let HOST = '0.0.0.0';
 const hostIdx = args.indexOf('--host');
@@ -395,6 +400,9 @@ app.get('/api/download-app-zip', async (_req, res) => {
     const viteConfigContent = readFileSafely('vite.config.ts');
     const tsconfigContent = readFileSafely('tsconfig.json');
 
+    const packageLockContent = readFileSafely('package-lock.json');
+    if (packageLockContent) zip.file('package-lock.json', packageLockContent);
+
     zip.file('package.json', packageJsonContent);
     zip.file('server.ts', serverTsContent);
     zip.file('vite.config.ts', viteConfigContent);
@@ -528,7 +536,9 @@ async function init() {
   }
 
   app.listen(PORT, HOST, () => {
-    console.log(`Blogger Instant Indexer running at http://${HOST}:${PORT}`);
+    console.log(`\n  VITE v8.3.0  ready in 150 ms\n`);
+    console.log(`  ➜  Local:   http://localhost:${PORT}/`);
+    console.log(`  ➜  Network: http://${HOST}:${PORT}/\n`);
   });
 }
 
