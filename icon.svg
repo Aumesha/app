@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F97316" />
+      <stop offset="100%" stop-color="#EA580C" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+  <!-- Blogger 'B' and Search Bot Signal icon -->
+  <circle cx="256" cy="256" r="160" fill="#FFFFFF" fill-opacity="0.1" />
+  <!-- Modern Bot / Speed Index symbol -->
+  <path d="M192 144h128a48 48 0 0 1 48 48v32a48 48 0 0 1-48 48H224v48h96a48 48 0 0 1 48 48v0a48 48 0 0 1-48 48H192a48 48 0 0 1-48-48V192a48 48 0 0 1 48-48z" fill="#FFFFFF" />
+  <circle cx="272" cy="208" r="24" fill="url(#accent)" />
+  <circle cx="272" cy="304" r="24" fill="url(#accent)" />
+  <!-- Fast Pulse Lines -->
+  <path d="M384 192l48-24m-48 88h56m-56 88l48 24" stroke="#FDBA74" stroke-width="16" stroke-linecap="round" />
+</svg>
