@@ -523,7 +523,7 @@ node index-post.js https://yourblog.blogspot.com/2026/10/your-post.html
 async function init() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: false },
       appType: 'spa',
     });
     app.use(vite.middlewares);

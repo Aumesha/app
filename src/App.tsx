@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Send,
   CheckCircle2,
@@ -17,6 +17,7 @@ import {
   GitBranch,
   Play,
   Terminal,
+  Smartphone,
 } from 'lucide-react';
 
 interface NotificationResult {
@@ -65,6 +66,57 @@ export default function App() {
       return '';
     }
   });
+
+  // PWA Install Prompt State
+  interface BeforeInstallPromptEvent extends Event {
+    prompt: () => Promise<void>;
+    userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+  }
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setIsInstallable(true);
+    };
+
+    const handleAppInstalled = () => {
+      setIsAppInstalled(true);
+      setIsInstallable(false);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsAppInstalled(true);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      await deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setIsAppInstalled(true);
+        setIsInstallable(false);
+      }
+      setDeferredPrompt(null);
+    } else {
+      setShowInstallGuide(true);
+    }
+  };
 
   // Calculate clean origin for robots & sitemaps
   const cleanOrigin = (() => {
@@ -178,7 +230,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -208,13 +260,24 @@ jobs:
       - name: Build Web Application
         run: npm run build
 
+      # Method 1: Deploy to gh-pages branch (Always succeeds, works with default GitHub Pages)
+      - name: Deploy to gh-pages branch
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: peaceiris/actions-gh-pages@v4
+        continue-on-error: true
+        with:
+          github_token: \${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+
+      # Upload Pages Artifact for Method 2
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
+        continue-on-error: true
         with:
           path: './dist'
 
   deploy:
-    name: Deploy to GitHub Pages
+    name: Deploy to GitHub Pages (Actions Environment)
     needs: build
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
@@ -222,9 +285,11 @@ jobs:
       name: github-pages
       url: \${{ steps.deployment.outputs.page_url }}
     steps:
+      # Method 2: Official GitHub Pages action (safely continues if Pages environment is not yet initialized)
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
 `;
 
   const gitPushCommands = `# 1. Git ಪ್ರಾರಂಭಿಸಿ (Initialize Git)
@@ -345,11 +410,23 @@ git push -u origin main`;
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Install App as PWA Button */}
+            {!isAppInstalled && (
+              <button
+                onClick={handleInstallClick}
+                className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+                title="Install as Android / Mobile / Desktop App"
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>{lang === 'kn' ? 'ಆ್ಯಪ್ ಇನ್‌ಸ್ಟಾಲ್ ಮಾಡಿ' : 'Install App'}</span>
+              </button>
+            )}
+
             {/* Direct GitHub Workflows Button */}
             <button
               onClick={() => setActiveTab('github-workflows')}
-              className="px-3.5 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+              className="px-3 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
             >
               <Github className="w-3.5 h-3.5" />
               <span>{lang === 'kn' ? 'GitHub ವರ್ಕ್‌ಫ್ಲೋಗಳು' : 'GitHub Workflows'}</span>
@@ -363,6 +440,67 @@ git push -u origin main`;
             </button>
           </div>
         </div>
+
+        {/* In-App Install Guide Modal */}
+        {showInstallGuide && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    {lang === 'kn' ? 'ಆ್ಯಪ್ ಆಗಿ ಇನ್‌ಸ್ಟಾಲ್ ಮಾಡಿಕೊಳ್ಳಿ' : 'Install as Mobile / Desktop App'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowInstallGuide(false)}
+                  className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-600 space-y-3 leading-relaxed">
+                <p>
+                  {lang === 'kn'
+                    ? 'ಈ ವೆಬ್ ಅಪ್ಲಿಕೇಶನ್ PWA (Progressive Web App) ಆಗಿದ್ದು, ಯಾವುದೇ ಆ್ಯಪ್ ಸ್ಟೋರ್ ಇಲ್ಲದೆ ನೇರವಾಗಿ ಮೊಬೈಲ್ ಅಥವಾ ಲ್ಯಾಪ್‌ಟಾಪ್‌ನಲ್ಲಿ ಇನ್‌ಸ್ಟಾಲ್ ಮಾಡಿಕೊಳ್ಳಬಹುದು:'
+                    : 'This application is a full PWA and can be installed directly without any app store:'}
+                </p>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <p className="font-semibold text-slate-900">
+                    {lang === 'kn' ? '📱 Android ಮೊಬೈಲ್‌ನಲ್ಲಿ:' : '📱 On Android Mobile:'}
+                  </p>
+                  <p>
+                    {lang === 'kn'
+                      ? 'Chrome ಬ್ರೌಸರ್‌ನ ಬಲಭಾಗದಲ್ಲಿರುವ ಮೂರು ಚುಕ್ಕೆಗಳ ಮೆನು (⋮) ಒತ್ತಿ -> "Add to Home screen" ಅಥವಾ "Install app" ಆಯ್ಕೆಮಾಡಿ.'
+                      : 'Tap the 3 dots menu (⋮) in Chrome -> Tap "Add to Home screen" or "Install app".'}
+                  </p>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <p className="font-semibold text-slate-900">
+                    {lang === 'kn' ? '💻 ಕಂಪ್ಯೂಟರ್ / ಲ್ಯಾಪ್‌ಟಾಪ್‌ನಲ್ಲಿ:' : '💻 On Computer / Laptop:'}
+                  </p>
+                  <p>
+                    {lang === 'kn'
+                      ? 'Chrome URL ಬಾರ್‌ನ ಬಲಭಾಗದಲ್ಲಿರುವ "Install" ಐಕಾನ್ ಕ್ಲಿಕ್ ಮಾಡಿ.'
+                      : 'Click the "Install" icon in Chrome address bar on the right.'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowInstallGuide(false)}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                {lang === 'kn' ? 'ಸರಿ, ಅರ್ಥವಾಯಿತು (Got it)' : 'Got it'}
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Navigation Tabs */}
